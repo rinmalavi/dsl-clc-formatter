@@ -50,7 +50,8 @@ class CodeFormatter {
                 .replaceAll("\t", "  ")
                 .replaceAll("\n *?,", ",\n")
                 .replaceAll("\\{\\s+?\\}", "{}")
-                .replaceAll("\n{2,}\\}", "\n}");
+                .replaceAll("\n{2,}\\}", "\n}")
+                .trim() + "\n";
 
         return code.equals(fixed) ? code : fixed;
     }
@@ -61,9 +62,9 @@ class CodeFormatter {
                 : code;
     }
 
-    public void format(final File file, final String encoding) throws IOException {
+    public void formatFile(final File file, final String encoding) throws IOException {
         if (!file.isFile()) {
-            throw new IOException("File was not a source file");
+            throw new IOException("Could not format, path is not a file: " + file);
         }
 
         final String code;
@@ -91,11 +92,34 @@ class CodeFormatter {
         }
     }
 
+    public void formatDirectory(final File directory, final String encoding) throws IOException {
+        if (!directory.isDirectory()) {
+            throw new IOException("Could not foramt, path is not a directory: " + directory);
+        }
+
+        for (final File current : directory.listFiles()) {
+            if (current.isDirectory()) {
+                formatDirectory(current, encoding);
+            }
+            else {
+                final String name = current.getName();
+                if (name.endsWith(".java") || name.endsWith(".scala")) {
+                    formatFile(current, encoding);
+                }
+            }
+        }
+    }
+
     public static void main(final String[] args) throws IOException {
         final CodeFormatter cf = new CodeFormatter();
         for (final String arg : args) {
             final File file = new File(arg);
-            cf.format(file, "UTF-8");
+            if (file.isDirectory()) {
+                cf.formatDirectory(file, "UTF-8");
+            }
+            else {
+                cf.formatFile(file, "UTF-8");
+            }
         }
     }
 }

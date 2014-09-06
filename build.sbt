@@ -10,9 +10,8 @@ scalaVersion := "2.11.2"
 
 crossPaths := false
 
-libraryDependencies := Seq(
-  "org.scala-lang" % "scala-library" % scalaVersion.value
-, "com.danieltrinh" %% "scalariform" % "0.1.5" intransitive()
+libraryDependencies ++= Seq(
+  "com.danieltrinh" %% "scalariform" % "0.1.5"
 )
 
 graphSettings

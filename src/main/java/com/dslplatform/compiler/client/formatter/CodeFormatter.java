@@ -1,5 +1,6 @@
 package com.dslplatform.compiler.client.formatter;
 
+import scala.None$;
 import scala.Option;
 import scala.collection.immutable.List;
 
@@ -37,20 +38,29 @@ class CodeFormatter {
     }
 
     private String runFormat(final String code) {
-        final List<TextEdit> edits = ScalaFormatter.formatAsEdits(code, preferences, Option.apply(null), 0, "2.10.4");
-        if (edits.isEmpty()) return code;
+        try {
+            final List<TextEdit> edits = ScalaFormatter.formatAsEdits(code, preferences,
+                    Option.apply((String) null), 0, "2.10.4");
+            if (edits.isEmpty()) return code;
 
-        final String formatted = TextEditProcessor.runEdits(code, edits);
-        return code.equals(formatted) ? code : formatted;
+            final String formatted = TextEditProcessor.runEdits(code, edits);
+            return code.equals(formatted) ? code : formatted;
+        }
+        catch (final Exception e) {
+            return code;
+        }
     }
 
     private String fixWhitespace(final String code) {
         final String fixed = code
                 .replaceAll("\r", "")
                 .replaceAll("\t", "  ")
-                .replaceAll("\n *?,", ",\n")
+                .replaceAll(" +\n", "\n")
+                .replaceAll("\n{3,}", "\n\n")
+                .replaceAll("(?:\n *)+(\n *\\})", "$1")
+                .replaceAll("(\n *?),", ",$1 ")
                 .replaceAll("\\{\\s+?\\}", "{}")
-                .replaceAll("\n{2,}\\}", "\n}")
+                .replaceAll("\\(\\s+?\\)", "()")
                 .trim() + "\n";
 
         return code.equals(fixed) ? code : fixed;
@@ -94,7 +104,7 @@ class CodeFormatter {
 
     public void formatDirectory(final File directory, final String encoding) throws IOException {
         if (!directory.isDirectory()) {
-            throw new IOException("Could not foramt, path is not a directory: " + directory);
+            throw new IOException("Could not format, path is not a directory: " + directory);
         }
 
         for (final File current : directory.listFiles()) {

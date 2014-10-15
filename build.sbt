@@ -1,16 +1,20 @@
 import AssemblyKeys._
 
+val NGSNexus     = "NGS Nexus"     at "http://ngs.hr/nexus/content/groups/public/"
+val NGSReleases  = "NGS Releases"  at "http://ngs.hr/nexus/content/repositories/releases/"
+val NGSSnapshots = "NGS Snapshots" at "http://ngs.hr/nexus/content/repositories/snapshots/"
+
 organization := "com.dslplatform"
 
 name := "dsl-clc-formatter"
 
-version := "0.1.0"
+version := "0.1.1"
 
-scalaVersion := "2.11.2"
+crossScalaVersions := Seq("2.11.2", "2.10.4")
 
-crossPaths := false
+scalaVersion := crossScalaVersions.value.head
 
-resolvers += "NGS 3rd Party" at "http://ngs.hr/nexus/content/repositories/thirdparty/"
+resolvers += NGSNexus
 
 libraryDependencies ++= Seq(
   "com.danieltrinh" %% "scalariform" % "0.1.5"
@@ -78,3 +82,12 @@ mergeStrategy in assembly <<= (mergeStrategy in assembly) { (old) => {
 }}
 
 ideaExcludeFolders ++= Seq(".idea", ".idea_modules")
+
+publishArtifact in (Compile, packageDoc) := false
+
+publishTo := Some(if (version.value endsWith "-SNAPSHOT") NGSSnapshots else NGSReleases)
+
+credentials ++= {
+  val creds = Path.userHome / ".config" / "dsl-clc-formatter" / "nexus.config"
+  if (creds.exists) Some(Credentials(creds)) else None
+}.toSeq

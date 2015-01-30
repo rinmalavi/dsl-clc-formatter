@@ -74,7 +74,6 @@ public class ArtifactDownload {
             if (!jarFile.isFile()) return false;
 
             if (length != jarFile.length()) {
-                System.out.println("SIZE WRONG");
                 jarFile.delete();
                 return false;
             }
@@ -88,19 +87,16 @@ public class ArtifactDownload {
             while (offset < length) {
                 final int read = fis.read(body, offset, length - offset);
                 if (read == -1) break;
-                System.out.println("READ CACHE:" + read);
                 md.update(body, offset, read);
                 offset += read;
             }
 
             final byte[] digest = md.digest();
             if (!Arrays.equals(digest, sha1)) {
-                System.out.println("CACHED DIGEST DIFFERS for " + url);
                 jarFile.delete();
                 return false;
             }
 
-            System.out.println("CACHE OK!");
             return true;
         }
 
@@ -111,11 +107,9 @@ public class ArtifactDownload {
                 int offset = 0;
                 while(offset < length) {
                     final int read = is.read(body, offset, length - offset);
-                    System.out.println(read);
                     if (read == -1) break;
                     offset += read;
                 }
-                System.out.println("OFFSET IS : " + offset);
                 if (offset != length) {
                     throw new IOException(String.format(
                             "Artifact was too small (got %d/%d bytes)",
@@ -148,9 +142,6 @@ public class ArtifactDownload {
                         hexSha1,
                         DatatypeConverter.printHexBinary(digest).toLowerCase(Locale.ENGLISH)));
             }
-
-            System.out.println(DatatypeConverter.printHexBinary(digest).toLowerCase(Locale.ENGLISH));
-            System.out.println(DatatypeConverter.printHexBinary(sha1).toLowerCase(Locale.ENGLISH));
         }
 
         private void persist(final File jarFile, final byte[] body) throws IOException {

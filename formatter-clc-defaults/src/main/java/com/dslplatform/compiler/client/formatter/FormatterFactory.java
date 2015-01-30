@@ -9,11 +9,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 
-enum StaticFormatterFactoryBinder {
+enum FormatterFactory {
     INSTANCE;
 
     private static InputStream readResource(final String name) throws IOException {
-        return StaticFormatterFactoryBinder.class.getResourceAsStream(name);
+        return FormatterFactory.class.getResourceAsStream(name);
     }
 
     private static Properties readProperties(final String name) throws IOException {
@@ -34,7 +34,6 @@ enum StaticFormatterFactoryBinder {
             final Formatter formatter = createFormatter(lowerLang);
             formatters.put(lowerLang, formatter);
 
-            System.out.println("DONE CREATING FORMATERED FOR: " + lowerLang);
             return formatter;
         }
     }
@@ -42,15 +41,15 @@ enum StaticFormatterFactoryBinder {
     private static final String DSL_PLATFORM_NEXUS = "https://dsl-platform.com/nexus/content/groups/public/";
 
     private static final Dependencies csharpDependencies = new Dependencies(
-            new ArtifactDownload(DSL_PLATFORM_NEXUS, "com.dslplatform.formatter", "dsl-clc-formatter-language-csharp", "0.2.0", 1522, "9ff1f3505ec9029c69d63bd28b6673314958a3c0")
+            new ArtifactDownload(DSL_PLATFORM_NEXUS, "com.dslplatform.formatter", "dsl-clc-formatter-language-csharp", "0.2.0", 1522, "b9e4d5ac8d5e6b118ab534ec8eb9807b7a1cba38")
     );
 
     private static final Dependencies phpDependencies = new Dependencies(
-            new ArtifactDownload(DSL_PLATFORM_NEXUS, "com.dslplatform.formatter", "dsl-clc-formatter-language-php", "0.2.0", 1514, "043768fe7e0e4e1dc4eff1bb05db09538b260e6b")
+            new ArtifactDownload(DSL_PLATFORM_NEXUS, "com.dslplatform.formatter", "dsl-clc-formatter-language-php", "0.2.0", 1514, "b03c43710e116cefa525e40aa8c8b381652541e7")
     );
 
     private static final Dependencies javaDependencies = new Dependencies(
-            new ArtifactDownload(DSL_PLATFORM_NEXUS, "com.dslplatform.formatter", "dsl-clc-formatter-language-java", "0.2.0",                    2122, "98aa1b40e62e78066a751af798408bad99b375be"),
+            new ArtifactDownload(DSL_PLATFORM_NEXUS, "com.dslplatform.formatter", "dsl-clc-formatter-language-java", "0.2.0",                    2122, "157d8e93fb11b246ee008346a994d4599999aaf7"),
             new ArtifactDownload(DSL_PLATFORM_NEXUS, "org.eclipse.equinox",       "org.eclipse.equinox.common",      "3.6.0.v20100503",        101957, "13c4a5fde7a4b976fe4c5621964881108d23b297"),
             new ArtifactDownload(DSL_PLATFORM_NEXUS, "org.eclipse.jdt",           "core",                            "3.10.0.v20140902-0626", 5565845, "647e19b28c106a63a14401c0f5956289792adf2f"),
             new ArtifactDownload(DSL_PLATFORM_NEXUS, "org.eclipse",               "text",                            "3.5.300.v20130515-1451", 249432, "53576e81d4ea46d7803c1b9fad43a43b5e24b025"),
@@ -58,10 +57,10 @@ enum StaticFormatterFactoryBinder {
     );
 
     private static final Dependencies scala211Dependencies = new Dependencies(
-            new ArtifactDownload(DSL_PLATFORM_NEXUS, "org.scala-lang",            "scala-library",                         "2.11.2", 5545300, "4718c022bd5bd84705ddacec18072c351832bc20"),
-            new ArtifactDownload(DSL_PLATFORM_NEXUS, "com.dslplatform.formatter", "dsl-clc-formatter-language-scala_2.11", "0.2.0",     2060, "aea98a82812a0bb0e5ee705a031d52c564e9aa14"),
+            new ArtifactDownload(DSL_PLATFORM_NEXUS, "org.scala-lang",            "scala-library",                         "2.11.5", 5576839, "a5544bb030c5e6c3d81ad116b7dc5024f047df26"),
+            new ArtifactDownload(DSL_PLATFORM_NEXUS, "com.dslplatform.formatter", "dsl-clc-formatter-language-scala_2.11", "0.2.0",     2059, "68f16808a9fb285a8e2646a806bba2265ddd23c4"),
             new ArtifactDownload(DSL_PLATFORM_NEXUS, "com.danieltrinh",           "scalariform_2.11",                      "0.1.5",  1948155, "621e51bc84bd321b4bd003577660fa012e76e92a"),
-            new ArtifactDownload(DSL_PLATFORM_NEXUS, "org.scala-lang.modules",    "scala-xml_2.11",                        "1.0.2",   648678, "820fbca7e524b530fdadc594c39d49a21ea0337e")
+            new ArtifactDownload(DSL_PLATFORM_NEXUS, "org.scala-lang.modules",    "scala-xml_2.11",                        "1.0.3",   647893, "8f295fc7620bf5a71eb7e34e71d97207aa534abf")
     );
 
     @SuppressWarnings("unchecked")
@@ -109,7 +108,7 @@ enum StaticFormatterFactoryBinder {
                         .loadClass("com.dslplatform.compiler.client.formatter.util.ScalaCodeFormatter");
 
                 final Formatter scalaCodeFormatter = clazz.getConstructor(Properties.class, String.class, String.class)
-                        .newInstance(readProperties("scala-format.properties"), "\n", "2.11.2");
+                        .newInstance(readProperties("scala-format.properties"), "\n", "2.11.5");
 
                 return new FormatterCombinator(
                         PatternFormatter.fromInputStream(readResource("scala-clean.regex")),

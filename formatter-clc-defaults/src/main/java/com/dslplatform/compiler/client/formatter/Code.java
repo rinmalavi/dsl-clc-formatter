@@ -4,7 +4,7 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.Arrays;
 
-public class Code implements Serializable {
+public class Code {
     public final File file;
     public final String path;
 

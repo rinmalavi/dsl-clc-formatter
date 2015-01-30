@@ -1,28 +1,29 @@
-import sbt.Keys._
 import sbt._
+import Keys._
 
 trait Default {
   private val NGSNexus     = "NGS Nexus"     at "http://ngs.hr/nexus/content/groups/public/"
   private val NGSReleases  = "NGS Releases"  at "http://ngs.hr/nexus/content/repositories/releases/"
   private val NGSSnapshots = "NGS Snapshots" at "http://ngs.hr/nexus/content/repositories/snapshots/"
 
-  val defaultSettings =
-    Defaults.coreDefaultSettings ++
-    net.virtualvoid.sbt.graph.Plugin.graphSettings ++
-    sbtrelease.ReleasePlugin.releaseSettings ++ 
-    sbtassembly.Plugin.assemblySettings ++ Seq(
+  lazy val defaultSettings =
+    net.virtualvoid.sbt.graph.Plugin.graphSettings ++ Seq(
       organization := "com.dslplatform.formatter"
     , autoScalaLibrary := false
     , crossPaths := false
-    , javaHome := sys.env.get("JDK16_HOME").map(file(_))
-    , javacOptions := Seq(
-        "-deprecation"
-      , "-encoding", "UTF-8"
-      , "-Xlint:unchecked"
+    , javacOptions in doc := Seq(
+        "-encoding", "UTF-8"
       , "-source", "1.6"
-      , "-target", "1.6"
       )
-    , crossScalaVersions := Seq("2.11.2", "2.10.4")
+    , javacOptions in (Compile, compile) := (javacOptions in doc).value ++ Seq(
+        "-target", "1.6"
+      , "-deprecation"
+      , "-Xlint:all"
+      ) ++ (sys.env.get("JDK16_HOME") match {
+        case Some(jdk16Home) => Seq("-bootclasspath", jdk16Home + "/jre/lib/rt.jar")
+        case _ => Nil
+      })
+    , crossScalaVersions := Seq("2.11.5", "2.10.4")
     , scalaVersion := crossScalaVersions.value.head
     , scalacOptions := Seq(
         "-deprecation"
@@ -52,9 +53,7 @@ trait Default {
       , "-Ywarn-numeric-widen"
       )
     , resolvers := Seq(NGSNexus)
-    , externalResolvers := Resolver.withDefaultResolvers(resolvers.value, mavenCentral = false)
     , publishTo := Some(if (version.value endsWith "-SNAPSHOT") NGSSnapshots else NGSReleases)
-    , publishArtifact in (Compile, packageDoc) := false
     , credentials ++= {
         val creds = Path.userHome / ".config" / "dsl-clc-formatter" / "nexus.config"
         if (creds.exists) Some(Credentials(creds)) else None

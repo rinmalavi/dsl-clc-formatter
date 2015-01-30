@@ -32,8 +32,6 @@ public class Dependencies {
                 localCache.add(download.get().toURI().toURL());
             }
 
-            System.out.println(localCache);
-
             return new URLClassLoader(
                     localCache.toArray(new URL[localCache.size()]),
                     Dependencies.class.getClassLoader());

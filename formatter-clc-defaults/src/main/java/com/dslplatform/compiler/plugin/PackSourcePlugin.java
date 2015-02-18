@@ -1,60 +1,42 @@
-package com.dslplatform.compiler.client.formatter;
+package com.dslplatform.compiler.plugin;
 
 import com.dslplatform.compiler.client.*;
 import com.dslplatform.compiler.client.parameters.DslPath;
-import com.dslplatform.compiler.client.parameters.Targets;
 import com.dslplatform.compiler.client.parameters.Targets.Option;
 import com.dslplatform.compiler.client.parameters.build.BuildAction;
 
-import java.io.File;
 import java.util.*;
 
 /**
- 2 additional parameters:
+ Source parameter, if set, source will be downloaded and packed to
+ specified jar or default one if name not provided
 
- 	source - should there be source?
-
- only source
- source: generate sources (because not present in targets)
- source: format sources
- source: copy sources to src/generated/java
- java -jar dsl-clc.jar … -source:java_client=src/generated/java
-
- target + source example
- target: generate sources
- target: compile sources (jar)
- source: format sources in tmp (java_client)
- source: compile sources (jar)
- source: copy sources to src/generated/java
- java -jar dsl-clc.jar … -target=revenj,java_client -source:java_client=src/generated/java
-
- 	pack-source - package formatted sources (phar (PHP), zip (C#), jar (java, scala))
-
- target + pack-sources example
- target: generate sources
- target: compile java_client & revenj
- pack-sources: format sources (java_client)
- pack-sources: compile sources (jar)
- pack-sources: archive sources from tmp (java_client) to lib/foo-source.jar
- java -jar dsl-clc.jar … -target=revenj,java_client -pack-sources:java_client=lib/foo-source.jar -pack-sources:php_ui=models/generated-ui.phar
+ Example:
+ java -jar dsl-clc.jar \
+ 	-u=username \
+ 	-p=password \
+ 	-target=revenj,java_client \
+ 	-pack-sources:java_client=lib/foo-source.jar \
+ 	-pack-sources:php_ui=models/generated-ui.phar
 
  */
-public enum SourcePlugin implements CompileParameter, ParameterParser {
-	INSTANCE;
+public class PackSourcePlugin implements CompileParameter, ParameterParser {
+
+	public final static PackSourcePlugin INSTANCE = new PackSourcePlugin();
 
 	@Override
-	public String getAlias() { return "source"; }
+	public String getAlias() { return "pack-source"; }
 
 	@Override
 	public String getUsage() { return "options"; }
 
-	static final String CACHE_NAME = "source_option_cache";
+	static final String CACHE_NAME = "pack_option_cache";
 
 	/**
 	 * Called after parse to check the validity of arguments.
 	 * @param context
 	 * @return
-	 * @throws ExitException
+	 * @throws com.dslplatform.compiler.client.ExitException
 	 */
 	@Override
 	public boolean check(final Context context) throws ExitException {
@@ -64,21 +46,21 @@ public enum SourcePlugin implements CompileParameter, ParameterParser {
 		if (context.contains(INSTANCE)) {
 			final String value = context.get(INSTANCE);
 			if (value == null || value.length() == 0) {
-				context.error("Source not provided. ");
+				context.error("Source was not provided.");
 				listOptions(context);
 				return false;
 			}
-			/* Split the value part for chosen sources. */
+			/* Split the value part for chosen sources packing. */
 			for (final String t : value.split(",")) {
 				if (distinctSources.add(t.toLowerCase())) {
 					targets.add(t);
 				}
 			}
 		}
-		/* No targets chosen throw message and exit */
+		/* If no targets chosen throw message and exit */
 		if (targets.size() == 0) {
 			if (context.contains(INSTANCE)) {
-				context.error("Source not provided. ");
+				context.error("Target languages no specified for packing. ");
 				listOptions(context);
 				return false;
 			}
@@ -124,40 +106,27 @@ public enum SourcePlugin implements CompileParameter, ParameterParser {
 	 */
 	@Override
 	public void run(final Context context) throws ExitException {
-		final List<Option> sources = context.load(CACHE_NAME);
-		if (sources == null) return;
-		final List<Option> targets = context.load(Targets.CACHE_NAME);
-		final List<Option> notargetsources = new LinkedList<Option>();
-
-		for (final Option source : sources) {
 			/*
-				If target action is called, i.e. target parameter was specified for this language
-				then this action will be preformed as target, so no need to call build.
-				Only build for languages (Target.Options) with source only specified will be called here.
+				This functionality is preformed in the Plugin class.
 			*/
-			if (targets.contains(source)) continue;
-			notargetsources.add(source);
-		}
-		Targets.INSTANCE.compileOffline(context, notargetsources);
 	}
 
 	static String sourceOptionCache(final String value) {
-		return "source:" + value;
+		return "pack-source:" + value;
 	}
+
 	/**
 	 * Called for CompileParameters which also implement ParameterParser (dsl-clc:Main:113)
 	 */
 	@Override
 	public Either<Boolean> tryParse(final String name, final String value, final Context context) {
+
 		for (final Option o : Option.values()) {
 			final String sourceOptionCache = sourceOptionCache(o.value);
 			if (sourceOptionCache.equalsIgnoreCase(name)) {
 				if (value == null || value.length() == 0) {
-					return Either.fail("Target source parameter detected, but it's missing path as argument. Parameter: " + name);
-				}
-				final File path = new File(value);
-				if (path.exists() && !path.isDirectory()) {
-					return Either.fail("Target source path found, but it's not a directory. Parameter: " + name);
+					return Either.fail("Target source package parameter detected, but it's missing path as argument. " +
+							"Parameter: " + name);
 				}
 				final BuildAction build = o.getAction();
 				o.setAction(FormattedSourceBuild.from(o, build));
@@ -170,12 +139,16 @@ public enum SourcePlugin implements CompileParameter, ParameterParser {
 
 	@Override
 	public String getShortDescription() {
-		return "Format sources.";
+		return "Packs sources to specified locations.";
 	}
 
 	@Override
 	public String getDetailedDescription() {
-		return "If you want to version the DSL compiler source output, you can format the files using this option.";
+		return
+				"package formatted sources \n" +
+						"phar (PHP)\n" +
+						" zip (C#)\n" +
+						" jar (java, scala))";
 	}
 
 	private static void listOptions(final Context context) {

@@ -64,7 +64,6 @@ object Build extends Build with Default {
     settings(defaultSettings: _*)
     settings(
       name := "DSL-CLC Formatter Language Scala"
-    , autoScalaLibrary := true
     , crossPaths := true
     , libraryDependencies += "com.danieltrinh" %% "scalariform" % "0.1.5"
     )
@@ -81,8 +80,18 @@ object Build extends Build with Default {
       name := "DSL-CLC Formatter Defaults"
     , assemblyJarName in assembly := "dsl-clc-formatter.jar"
     , mainClass in assembly := Some("com.dslplatform.compiler.client.formatter.Main")
-    )
-  ) dependsOn(downloader, util)
+    , libraryDependencies += "junit" % "junit" % "4.11" % "test"
+    , libraryDependencies += "commons-io" % "commons-io" % "2.4" % "test"
+    ) settings (ScriptedPlugin.scriptedSettings: _*)
+      settings(ScriptedPlugin.scriptedLaunchOpts := {
+          ScriptedPlugin.scriptedLaunchOpts.value ++
+            Seq("-Xmx1024M"
+              , "-XX:MaxPermSize=256M"
+              , "-Dlibrary.version=" + version.value
+            )
+        }
+      )
+    ) dependsOn(downloader, util)
 
   lazy val root = (
     project in file(".")

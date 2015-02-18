@@ -1,8 +1,9 @@
-package com.dslplatform.compiler.client.formatter;
+package com.dslplatform.compiler.plugin;
 
 import com.dslplatform.compiler.client.Context;
 import com.dslplatform.compiler.client.ExitException;
 
+import com.dslplatform.compiler.client.formatter.Format;
 import com.dslplatform.compiler.client.parameters.Targets;
 import com.dslplatform.compiler.client.parameters.build.*;
 

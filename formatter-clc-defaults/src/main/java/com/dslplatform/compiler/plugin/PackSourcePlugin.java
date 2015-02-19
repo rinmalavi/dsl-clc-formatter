@@ -106,9 +106,9 @@ public class PackSourcePlugin implements CompileParameter, ParameterParser {
 	 */
 	@Override
 	public void run(final Context context) throws ExitException {
-			/*
-				This functionality is preformed in the Plugin class.
-			*/
+		/*
+			This functionality is preformed in the Plugin class.
+		*/
 	}
 
 	static String sourceOptionCache(final String value) {

@@ -10,49 +10,38 @@ import java.io.File;
 import java.util.*;
 
 /**
- 2 additional parameters:
-
- 	source - should there be source?
-
- only source
- source: generate sources (because not present in targets)
- source: format sources
- source: copy sources to src/generated/java
- java -jar dsl-clc.jar … -source:java_client=src/generated/java
-
- target + source example
- target: generate sources
- target: compile sources (jar)
- source: format sources in tmp (java_client)
- source: compile sources (jar)
- source: copy sources to src/generated/java
- java -jar dsl-clc.jar … -target=revenj,java_client -source:java_client=src/generated/java
-
- 	pack-source - package formatted sources (phar (PHP), zip (C#), jar (java, scala))
-
- target + pack-sources example
- target: generate sources
- target: compile java_client & revenj
- pack-sources: format sources (java_client)
- pack-sources: compile sources (jar)
- pack-sources: archive sources from tmp (java_client) to lib/foo-source.jar
- java -jar dsl-clc.jar … -target=revenj,java_client -pack-sources:java_client=lib/foo-source.jar -pack-sources:php_ui=models/generated-ui.phar
-
+ * Source parameter, if set, source will be downloaded.
+ * Formatted with language specific formatter.
+ * Finally it will be moved to specified location.
+ * <p>
+ * Example:
+ * java -jar dsl-clc.jar \
+ * -u=username \
+ * -p=password \
+ * -target=java_client \
+ * -sources:java_client=gen
  */
 public class SourcePlugin implements CompileParameter, ParameterParser {
 
 	public final static SourcePlugin INSTANCE = new SourcePlugin();
 
-	@Override
-	public String getAlias() { return "source"; }
+	private List<Option> sourceOptions = new LinkedList<Option>();
 
 	@Override
-	public String getUsage() { return "options"; }
+	public String getAlias() {
+		return "source";
+	}
+
+	@Override
+	public String getUsage() {
+		return "options";
+	}
 
 	static final String CACHE_NAME = "source_option_cache";
 
 	/**
 	 * Called after parse to check the validity of arguments.
+	 *
 	 * @param context
 	 * @return
 	 * @throws ExitException
@@ -76,6 +65,14 @@ public class SourcePlugin implements CompileParameter, ParameterParser {
 				}
 			}
 		}
+
+		for (final Option o : Option.values()) {
+			final String lc = o.value.toLowerCase();
+			if (context.contains(sourceOptionCache(o.value)) && !distinctSources.contains(lc)) {
+				targets.add(o.value);
+				distinctSources.add(lc);
+			}
+		}
 		/* No targets chosen throw message and exit */
 		if (targets.size() == 0) {
 			if (context.contains(INSTANCE)) {
@@ -89,7 +86,7 @@ public class SourcePlugin implements CompileParameter, ParameterParser {
 		final List<Option> options = new ArrayList<Option>(targets.size());
 		for (final String name : targets) {
 			final Option o = Option.from(name);
-			if (o == null || FormattedSourceBuild.from(o) != null) {
+			if (o == null || FormattedSourceBuild.from(o) == null) {
 				context.error("Unknown source, or not supported: " + name);
 				listOptions(context);
 				return false;
@@ -104,17 +101,16 @@ public class SourcePlugin implements CompileParameter, ParameterParser {
 			return false;
 		}
 		/*
+			TODO:
 			Preform target build action check for building the chosen source(target) options.
 			At this point in code, tryParse has already been processed.
 			TryParse has switched target builds for custom build implementations.
 			So checks preformed should be on custom builds.
-		*/
-		for (final Option o : options) {
-			if (!o.getAction().check(context)) {
-				return false;
-			}
-		}
-		/* Add them to cache so they can be later loaded from run */
+
+		/* Add them to cache so they can be later loaded from run
+		 	Actually local variable sourceOptions are used here instead.
+		 	But this how usually it happens in dsl-clc so I'll keep this comment here will comments are moved there.
+		 */
 		context.cache(CACHE_NAME, options);
 
 		return true;
@@ -125,33 +121,36 @@ public class SourcePlugin implements CompileParameter, ParameterParser {
 	 */
 	@Override
 	public void run(final Context context) throws ExitException {
-		final List<Option> sources = context.load(CACHE_NAME);
-		if (sources == null) return;
+		if (sourceOptions.isEmpty()) return;
 		final List<Option> targets = context.load(Targets.CACHE_NAME);
-		final List<Option> notargetsources = new LinkedList<Option>();
+		if (targets == null) {
+			Targets.INSTANCE.compile(context, sourceOptions);
+		} else {
+			final List<Option> notargetsources = new LinkedList<Option>();
+			for (final Option source : sourceOptions) {
+				/*
+					If target action is called, i.e. target parameter was specified for this language
+					then this action will be preformed as target, so no need to call build.
+					Only build for languages (Target.Options) with source only specified will be called here.
+				*/
+				if (targets.contains(source)) continue;
+				notargetsources.add(source);
 
-		for (final Option source : sources) {
-			/*
-				If target action is called, i.e. target parameter was specified for this language
-				then this action will be preformed as target, so no need to call build.
-				Only build for languages (Target.Options) with source only specified will be called here.
-			*/
-			if (targets.contains(source)) continue;
-			notargetsources.add(source);
+			}
+			Targets.INSTANCE.compile(context, notargetsources);
 		}
-		Targets.INSTANCE.compileOffline(context, notargetsources);
+
 	}
 
 	static String sourceOptionCache(final String value) {
 		return "source:" + value;
 	}
+
 	/**
 	 * Called for CompileParameters which also implement ParameterParser (dsl-clc:Main:113)
 	 */
 	@Override
 	public Either<Boolean> tryParse(final String name, final String value, final Context context) {
-		System.out.println(name + value);
-		System.out.println("tryParse");
 		for (final Option o : Option.values()) {
 			final String sourceOptionCache = sourceOptionCache(o.value);
 			if (sourceOptionCache.equalsIgnoreCase(name)) {
@@ -162,6 +161,12 @@ public class SourcePlugin implements CompileParameter, ParameterParser {
 				if (path.exists() && !path.isDirectory()) {
 					return Either.fail("Target source path found, but it's not a directory. Parameter: " + name);
 				}
+				/*  Usually this is held in context cache.  */
+				sourceOptions.add(o);
+				/*
+					Switch action for a custom one,
+					pass a regular build so it can be called for target parameter.
+				*/
 				final BuildAction build = o.getAction();
 				o.setAction(FormattedSourceBuild.from(o, build));
 				context.put(sourceOptionCache, value);

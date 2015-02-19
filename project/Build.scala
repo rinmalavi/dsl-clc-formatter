@@ -80,6 +80,9 @@ object Build extends Build with Default {
       name := "DSL-CLC Formatter Defaults"
     , assemblyJarName in assembly := "dsl-clc-formatter.jar"
     , mainClass in assembly := Some("com.dslplatform.compiler.client.formatter.Main")
+    , assemblyExcludedJars in assembly := {
+      (fullClasspath in assembly).value.filter {_.data.getName == "dsl-clc.jar"}
+    }
     , libraryDependencies += "junit" % "junit" % "4.11" % "test"
     , libraryDependencies += "commons-io" % "commons-io" % "2.4" % "test"
     ) settings (ScriptedPlugin.scriptedSettings: _*)

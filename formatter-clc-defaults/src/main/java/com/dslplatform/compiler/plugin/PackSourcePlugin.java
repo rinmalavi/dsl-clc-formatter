@@ -28,7 +28,7 @@ public class PackSourcePlugin implements CompileParameter, ParameterParser {
 	public String getAlias() { return "pack-source"; }
 
 	@Override
-	public String getUsage() { return "options"; }
+	public String getUsage() { return "path"; }
 
 	static final String CACHE_NAME = "pack_option_cache";
 
@@ -57,10 +57,18 @@ public class PackSourcePlugin implements CompileParameter, ParameterParser {
 				}
 			}
 		}
+		/* all added with source:option syntax */
+		for (final Option o : Option.values()) {
+			final String lc = o.value.toLowerCase();
+			if (context.contains(sourceOptionCache(o.value)) && !distinctSources.contains(lc)) {
+				targets.add(o.value);
+				distinctSources.add(lc);
+			}
+		}
 		/* If no targets chosen throw message and exit */
 		if (targets.size() == 0) {
 			if (context.contains(INSTANCE)) {
-				context.error("Target languages no specified for packing. ");
+				context.error("No target languages specified for packing. ");
 				listOptions(context);
 				return false;
 			}
@@ -70,11 +78,12 @@ public class PackSourcePlugin implements CompileParameter, ParameterParser {
 		final List<Option> options = new ArrayList<Option>(targets.size());
 		for (final String name : targets) {
 			final Option o = Option.from(name);
-			if (o == null || FormattedSourceBuild.from(o) != null) {
+			if (o == null || FormattedSourceBuild.from(o) == null) {
 				context.error("Unknown source, or not supported: " + name);
 				listOptions(context);
 				return false;
 			}
+			putCustomBuild(o);
 			options.add(o);
 		}
 		/* Check if DSL was provided */
@@ -96,6 +105,7 @@ public class PackSourcePlugin implements CompileParameter, ParameterParser {
 			}
 		}
 		/* Add them to cache so they can be later loaded from run */
+		context.put(PluginRunner.INSTANCE, null);
 		context.cache(CACHE_NAME, options);
 
 		return true;
@@ -107,7 +117,7 @@ public class PackSourcePlugin implements CompileParameter, ParameterParser {
 	@Override
 	public void run(final Context context) throws ExitException {
 		/*
-			This functionality is preformed in the Plugin class.
+			This functionality is preformed in the PluginRunner class.
 		*/
 	}
 
@@ -120,7 +130,6 @@ public class PackSourcePlugin implements CompileParameter, ParameterParser {
 	 */
 	@Override
 	public Either<Boolean> tryParse(final String name, final String value, final Context context) {
-
 		for (final Option o : Option.values()) {
 			final String sourceOptionCache = sourceOptionCache(o.value);
 			if (sourceOptionCache.equalsIgnoreCase(name)) {
@@ -128,8 +137,7 @@ public class PackSourcePlugin implements CompileParameter, ParameterParser {
 					return Either.fail("Target source package parameter detected, but it's missing path as argument. " +
 							"Parameter: " + name);
 				}
-				final BuildAction build = o.getAction();
-				o.setAction(FormattedSourceBuild.from(o, build));
+				putCustomBuild(o);
 				context.put(sourceOptionCache, value);
 				return Either.success(true);
 			}
@@ -145,10 +153,15 @@ public class PackSourcePlugin implements CompileParameter, ParameterParser {
 	@Override
 	public String getDetailedDescription() {
 		return
-				"package formatted sources \n" +
-						"phar (PHP)\n" +
-						" zip (C#)\n" +
-						" jar (java, scala))";
+			"package formatted sources \n" +
+				"phar (PHP)\n" +
+				"zip (C#)\n" +
+				"jar (java, scala))";
+	}
+
+	private void putCustomBuild(Option o) {
+		final BuildAction build = o.getAction();
+		o.setAction(FormattedSourceBuild.from(o, build));
 	}
 
 	private static void listOptions(final Context context) {

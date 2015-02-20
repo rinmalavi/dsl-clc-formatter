@@ -1,9 +1,12 @@
 package com.dslplatform.compiler.plugin;
 
 import com.dslplatform.compiler.client.Context;
+import com.dslplatform.compiler.client.Either;
 import com.dslplatform.compiler.client.ExitException;
 
+import com.dslplatform.compiler.client.Utils;
 import com.dslplatform.compiler.client.formatter.Format;
+import com.dslplatform.compiler.client.parameters.JavaPath;
 import com.dslplatform.compiler.client.parameters.Targets;
 import com.dslplatform.compiler.client.parameters.build.*;
 
@@ -32,7 +35,7 @@ public enum FormattedSourceBuild implements BuildAction {
 	private final String defaultSourcePath;
 	private final String defaultSourcePack;
 	final Targets.Option targetOption;
-	BuildAction superBuild;
+	private BuildAction superBuild = null;
 
 	FormattedSourceBuild(final String defaultSourcePath, final String defaultSourcePack, Targets.Option client) {
 		this.defaultSourcePath = defaultSourcePath;
@@ -53,7 +56,8 @@ public enum FormattedSourceBuild implements BuildAction {
 	public static FormattedSourceBuild from(final Targets.Option targetOption, BuildAction superBuild) {
 		for (final FormattedSourceBuild o : FormattedSourceBuild.values()) {
 			if (o.targetOption.equals(targetOption)) {
-				o.superBuild = superBuild;
+				if (o.superBuild == null)
+					o.superBuild = superBuild;
 				return o;
 			}
 		}
@@ -88,6 +92,7 @@ public enum FormattedSourceBuild implements BuildAction {
 			final String path = context.get(SourcePlugin.sourceOptionCache(targetOption.value));
 			final String sourceDirectoryPath = (path == null) ? defaultSourcePath : path;
 			try {
+				context.log("Copying source to " + sourceDirectoryPath);
 				return copyFolder(file, sourceDirectoryPath);
 			} catch (IOException e) {
 				context.error("IO Error occurred while coping sources: " + e.getMessage());
@@ -135,9 +140,13 @@ public enum FormattedSourceBuild implements BuildAction {
 		if (packsourceList == null || !packsourceList.contains(this.targetOption)) return;
 
 		final String path = context.load(PackSourcePlugin.sourceOptionCache(targetOption.value));
+		final File outputPath = new File(path == null ? defaultSourcePath : path);
 
-		//TODO: your zipping code here
-
+		final Either<Utils.CommandResult> execSourceArchive = JavaPath.makeSourcesArchive(context, sourceDirectory, outputPath);
+		if (!execSourceArchive.isSuccess()) {
+			context.error(execSourceArchive.whyNot());
+			throw new ExitException();
+		}
 	}
 
 	/**

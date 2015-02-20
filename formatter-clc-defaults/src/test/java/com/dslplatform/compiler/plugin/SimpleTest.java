@@ -1,6 +1,7 @@
 package com.dslplatform.compiler.plugin;
 
 import com.dslplatform.compiler.client.Main;
+import org.apache.commons.io.FileUtils;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -36,6 +37,22 @@ public class SimpleTest {
 		};
 		Main.main(args);
 		assertTrue(new File(generatedJavaPath, "model/Guards.java").exists());
+	}
+
+	@Test
+	public void SourceCallWithDefaultTest() throws URISyntaxException, IOException {
+		final File currentTest = new File(tmp, "SourceCallTest" + System.currentTimeMillis());
+		final File generatedJavaPath = new File(currentTest, "java");
+
+		final String[] args = {
+				"-properties=" + livePropsPath,
+				"-dsl=" + dslResourcePath,
+				"-source=java_client",
+				"-log"
+		};
+		Main.main(args);
+		assertTrue(new File("java/generated/src/model/Guards.java").exists());
+		FileUtils.deleteDirectory(new File("java")); // hmm, dangerous...
 	}
 
 	@Test
@@ -118,7 +135,28 @@ public class SimpleTest {
 		};
 		Main.main(args);
 		assertTrue(new File(generatedJavaPath, "model/Guards.java").exists());
-		assertTrue(new File(generatedJavaJar.getAbsolutePath()).exists());
+		assertTrue(generatedJavaJar.exists());
+	}
+
+	@Test
+	public void PackSpec() throws URISyntaxException, IOException {
+		final File currentTest = new File(tmp, "SourceAndBuildSpec" + System.currentTimeMillis());
+		currentTest.mkdir();
+		final File generatedJavaPath = new File(currentTest, "java-source.jar");
+		final File generatedJavaJar = new File(currentTest, "java.jar");
+
+		final String[] args = {
+				"-log",
+				"-download",
+				"-properties=" + livePropsPath,
+				"-dsl=" + dslResourcePath,
+				"-dependencies:java_client=" + tmpJavaLib.getAbsolutePath(),
+				"-pack-source:java_client=" + generatedJavaPath.getAbsolutePath(),
+				"-log"
+		};
+		Main.main(args);
+		assertTrue(generatedJavaPath.exists());
+		assertTrue(generatedJavaJar.exists());
 	}
 
 }

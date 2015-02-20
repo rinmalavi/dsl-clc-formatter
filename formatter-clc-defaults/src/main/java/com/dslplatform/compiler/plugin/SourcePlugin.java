@@ -2,7 +2,6 @@ package com.dslplatform.compiler.plugin;
 
 import com.dslplatform.compiler.client.*;
 import com.dslplatform.compiler.client.parameters.DslPath;
-import com.dslplatform.compiler.client.parameters.Targets;
 import com.dslplatform.compiler.client.parameters.Targets.Option;
 import com.dslplatform.compiler.client.parameters.build.BuildAction;
 
@@ -66,6 +65,7 @@ public class SourcePlugin implements CompileParameter, ParameterParser {
 			}
 		}
 
+		/* all added with source:option syntax */
 		for (final Option o : Option.values()) {
 			final String lc = o.value.toLowerCase();
 			if (context.contains(sourceOptionCache(o.value)) && !distinctSources.contains(lc)) {
@@ -91,8 +91,10 @@ public class SourcePlugin implements CompileParameter, ParameterParser {
 				listOptions(context);
 				return false;
 			}
+			putCustomBuild(o);
 			options.add(o);
 		}
+
 		/* Check if DSL was provided */
 		final Map<String, String> dsls = DslPath.getCurrentDsl(context);
 		if (dsls.size() == 0) {
@@ -111,6 +113,9 @@ public class SourcePlugin implements CompileParameter, ParameterParser {
 		 	Actually local variable sourceOptions are used here instead.
 		 	But this how usually it happens in dsl-clc so I'll keep this comment here will comments are moved there.
 		 */
+		sourceOptions.addAll(options);
+
+		context.put(PluginRunner.INSTANCE, null);
 		context.cache(CACHE_NAME, options);
 
 		return true;
@@ -121,26 +126,9 @@ public class SourcePlugin implements CompileParameter, ParameterParser {
 	 */
 	@Override
 	public void run(final Context context) throws ExitException {
-		if (sourceOptions.isEmpty()) return;
-		final List<Option> targets = context.load(Targets.CACHE_NAME);
-		if (targets == null) {
-			Targets.INSTANCE.compile(context, sourceOptions);
-		} else {
-			final List<Option> notargetsources = new LinkedList<Option>();
-			for (final Option source : sourceOptions) {
-				/*
-					If target action is called, i.e. target parameter was specified for this language
-					then this action will be preformed as target, so no need to call build.
-					Only build for languages (Target.Options) with source only specified will be called here.
-				*/
-				if (targets.contains(source)) continue;
-				notargetsources.add(source);
-
-			}
-			if (notargetsources.size() > 0)
-				Targets.INSTANCE.compile(context, notargetsources);
-		}
-
+		/*
+			This functionality is preformed in the PluginRunner class.
+		*/
 	}
 
 	static String sourceOptionCache(final String value) {
@@ -168,13 +156,17 @@ public class SourcePlugin implements CompileParameter, ParameterParser {
 					Switch action for a custom one,
 					pass a regular build so it can be called for target parameter.
 				*/
-				final BuildAction build = o.getAction();
-				o.setAction(FormattedSourceBuild.from(o, build));
+				putCustomBuild(o);
 				context.put(sourceOptionCache, value);
 				return Either.success(true);
 			}
 		}
 		return Either.success(false);
+	}
+
+	private void putCustomBuild(Option o) {
+		final BuildAction build = o.getAction();
+		o.setAction(FormattedSourceBuild.from(o, build));
 	}
 
 	@Override

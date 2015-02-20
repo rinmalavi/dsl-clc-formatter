@@ -34,7 +34,7 @@ public class SourcePlugin implements CompileParameter, ParameterParser {
 
 	@Override
 	public String getUsage() {
-		return "options";
+		return "path";
 	}
 
 	static final String CACHE_NAME = "source_option_cache";
@@ -137,7 +137,8 @@ public class SourcePlugin implements CompileParameter, ParameterParser {
 				notargetsources.add(source);
 
 			}
-			Targets.INSTANCE.compile(context, notargetsources);
+			if (notargetsources.size() > 0)
+				Targets.INSTANCE.compile(context, notargetsources);
 		}
 
 	}

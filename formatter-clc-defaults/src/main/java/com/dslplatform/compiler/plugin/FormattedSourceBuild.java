@@ -62,7 +62,7 @@ public enum FormattedSourceBuild implements BuildAction {
 
 	@Override
 	public boolean check(Context context) throws ExitException {
-		return false;
+		return superBuild.check(context);
 	}
 
 	@Override
